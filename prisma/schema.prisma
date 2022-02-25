@@ -1,0 +1,55 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Applications {
+  applicationID String @unique
+  applicationName String
+  callbackUrl String
+  tokenDuration Int
+  allowedDomains listDomains[]
+  authorizations Authorization[]
+}
+
+model listDomains {
+  domainID String @unique
+  domain String
+  Applications Applications? @relation(fields: [applicationID], references: [applicationID])
+  applicationID String
+}
+
+model Authorization {
+  authorizationID String @unique
+  Applications Applications? @relation(fields: [applicationID], references: [applicationID])
+  applicationID String
+  redirectTime String
+  startTime DateTime?
+  endTime DateTime?
+  tokenAuthenticated Boolean @default(false)
+  revoked Boolean @default(false)
+}
+
+
+model Utentes {
+  userID String @unique
+  userProc String
+  nomeCompleto String
+  nomeAbreviado String
+  dataNascimento DateTime
+  sexo Int
+  password String
+  nif Int
+  email String
+  nacionalidade String
+  muradaOne String
+  muradaTwo String?
+  numPorta String
+  codPostal String
+  localidade String
+  freguesia Int
+}
