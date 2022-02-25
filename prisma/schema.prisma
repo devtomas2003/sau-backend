@@ -27,6 +27,7 @@ model Authorization {
   authorizationID String @unique
   Applications Applications? @relation(fields: [applicationID], references: [applicationID])
   applicationID String
+  redirectUrl String
   redirectTime String
   startTime DateTime?
   endTime DateTime?

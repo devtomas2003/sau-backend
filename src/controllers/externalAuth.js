@@ -6,16 +6,14 @@ const jwt = require("jsonwebtoken");
 
 module.exports = {
     async getTokenRedirect(req, res){
-        if(req.headers.origin === undefined){
-            return res.status(400).json({
+        const redirectUrl = req.body.redirectUrl;
+        if(redirectUrl === undefined){
+            return res.status(200).json({
                 "status": "error",
-                "error": "Unknow origin domain"
+                "error": "Missing Redirect Url"
             });
         }else{
-            const httpsplit = req.headers.origin.split("/");
-            const ports = httpsplit[2].split(":");
-            const domainReq = ports[0];
-            const applicationToken = req.params.appToken;
+            const applicationToken = req.body.appToken;
             const appData = await prisma.applications.findUnique({
                 where: {
                     applicationID: applicationToken
@@ -25,17 +23,20 @@ module.exports = {
                 }
             });
             if(!appData){
-                return res.status(400).json({
+                return res.status(200).json({
                     "status": "error",
                     "error": "Invalid Application Token"
                 });
             }else{
                 const domains = appData.allowedDomains;
-                const foundedDomain = domains.find( domain => domain.domain === domainReq );
+                const httpsplit = redirectUrl.split("/");
+                const ports = httpsplit[2].split(":");
+                const redirectDomain = ports[0];
+                const foundedDomain = domains.find( domain => domain.domain === redirectDomain );
                 if(foundedDomain === undefined){
-                    return res.status(401).json({
+                    return res.status(200).json({
                         "status": "error",
-                        "error": "Unauthorized origin domain"
+                        "error": "Unauthorized redirect domain"
                     });
                 }else{
                     const redirectToken = uuidv4();
@@ -43,6 +44,7 @@ module.exports = {
                         data: {                
                             authorizationID: redirectToken,
                             applicationID: applicationToken,
+                            redirectUrl,
                             redirectTime: new Date(),
                         }
                     });
@@ -57,7 +59,7 @@ module.exports = {
     async getRedirectData(req, res){
         const redirectToken = req.params.redirectToken;
         if(redirectToken === undefined){
-            res.status(400).json({
+            res.status(200).json({
                 "status": "error",
                 "error": "Invalid redirect token"
             });
@@ -71,13 +73,13 @@ module.exports = {
                 }
             });
             if(!authorizationData){
-                res.status(400).json({
+                res.status(200).json({
                     "status": "error",
                     "error": "Invalid redirect token"
                 });
             }else{
                 if(authorizationData.tokenAuthenticated){
-                    res.status(400).json({
+                    res.status(200).json({
                         "status": "error",
                         "error": "Token already authenticated"
                     });
@@ -91,7 +93,7 @@ module.exports = {
                                 authorizationID: redirectToken
                             }
                         });
-                        res.status(400).json({
+                        res.status(200).json({
                             "status": "error",
                             "error": "Expired redirect token"
                         });
@@ -110,7 +112,7 @@ module.exports = {
         const password = req.body.pass;
         const authToken = req.params.authToken;
         if(!authToken){
-            res.status(400).json({
+            res.status(200).json({
                 "status": "error-token",
                 "error": "Redirect Token Error"
             });
@@ -121,7 +123,7 @@ module.exports = {
                 }
             });
             if(!utenteData){
-                res.status(401).json({
+                res.status(200).json({
                     "status": "error-user",
                     "error": "User not found"
                 });
@@ -137,13 +139,13 @@ module.exports = {
                             }
                         });
                         if(!applicationData){
-                            res.status(400).json({
+                            res.status(200).json({
                                 "status": "error-token",
                                 "error": "Redirect Token Error"
                             });
                         }else{
                             if(applicationData.tokenAuthenticated){
-                                res.status(400).json({
+                                res.status(200).json({
                                     "status": "error-token",
                                     "error": "Token already authenticated"
                                 });
@@ -157,7 +159,7 @@ module.exports = {
                                             authorizationID: authToken
                                         }
                                     });
-                                    res.status(400).json({
+                                    res.status(200).json({
                                         "status": "error-token",
                                         "error": "Redirect Token Error"
                                     });
@@ -183,7 +185,7 @@ module.exports = {
                             }
                         }
                     }else{
-                        res.status(401).json({
+                        res.status(200).json({
                             "status": "error-user",
                             "error": "User not found"
                         });
