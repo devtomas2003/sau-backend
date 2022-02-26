@@ -45,6 +45,7 @@ module.exports = {
                         data: {                
                             authorizationID: redirectToken,
                             applicationID: applicationToken,
+                            navigatorFingerprint: req.body.navigatorFinger,
                             redirectUrl,
                             redirectTime: new Date(),
                         }
@@ -58,7 +59,8 @@ module.exports = {
         }
     },
     async getRedirectData(req, res){
-        const redirectToken = req.params.redirectToken;
+        const redirectToken = req.body.redirectToken;
+        const navigatorToken = req.body.navigatorToken;
         if(redirectToken === undefined){
             res.status(200).json({
                 "status": "error",
@@ -85,10 +87,28 @@ module.exports = {
                         "error": "Token already authenticated"
                     });
                 }else{
-                    const now = new Date();
-                    const redirectMoment = new Date(authorizationData.redirectTime);
-                    const difference = (now - redirectMoment) / 1000;
-                    if(difference > 60){
+                    if(navigatorToken === authorizationData.navigatorFingerprint){
+                        const now = new Date();
+                        const redirectMoment = new Date(authorizationData.redirectTime);
+                        const difference = (now - redirectMoment) / 1000;
+                        if(difference > 60){
+                            await prisma.authorization.delete({
+                                where: {
+                                    authorizationID: redirectToken
+                                }
+                            });
+                            res.status(200).json({
+                                "status": "error",
+                                "error": "Expired redirect token"
+                            });
+                        }else{
+                            res.status(200).json({
+                                "status": "ok",
+                                "appName": authorizationData.Applications.applicationName,
+                                "backurl": authorizationData.redirectUrl
+                            });
+                        }
+                    }else{
                         await prisma.authorization.delete({
                             where: {
                                 authorizationID: redirectToken
@@ -96,13 +116,7 @@ module.exports = {
                         });
                         res.status(200).json({
                             "status": "error",
-                            "error": "Expired redirect token"
-                        });
-                    }else{
-                        res.status(200).json({
-                            "status": "ok",
-                            "appName": authorizationData.Applications.applicationName,
-                            "backurl": authorizationData.redirectUrl
+                            "error": "Finger print invalid"
                         });
                     }
                 }
@@ -166,7 +180,7 @@ module.exports = {
                                         "error": "Redirect Token Error"
                                     });
                                 }else{
-                                    const token = jwt.sign({ id: utenteData.userID }, "SAUPlatAETTR", {
+                                    const token = jwt.sign({ id: utenteData.userID, authSession: authToken }, "SAUPlatAETTR", {
                                         expiresIn: 3600*applicationData.Applications.tokenDuration
                                     });
                                     await prisma.authorization.update({
@@ -181,7 +195,8 @@ module.exports = {
                                     });
                                     axios.post(applicationData.Applications.callbackUrl, {
                                         sessionToken: authToken,
-                                        authToken: token
+                                        authToken: token,
+                                        fignPrt: applicationData.navigatorFingerprint
                                     }).then(() => {
                                         res.status(200).json({
                                             "status": "ok",

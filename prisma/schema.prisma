@@ -31,6 +31,7 @@ model Authorization {
   redirectTime String
   startTime DateTime?
   endTime DateTime?
+  navigatorFingerprint String
   tokenAuthenticated Boolean @default(false)
   revoked Boolean @default(false)
 }

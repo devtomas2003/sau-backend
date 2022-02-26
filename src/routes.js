@@ -6,9 +6,9 @@ const Langs = require('./controllers/Langs');
 const Utentes = require('./controllers/Utentes');
 const Auth = require('./middlewares/Auth');
 
-routes.get('/getLang/:page/:lang', Langs.getTranslation);
+routes.get('/getLang/:lang', Langs.getTranslation);
 routes.post('/getRedirectToken', ExternalAuth.getTokenRedirect);
-routes.get('/getRedirectData/:redirectToken', ExternalAuth.getRedirectData);
+routes.post('/getRedirectData', ExternalAuth.getRedirectData);
 routes.post('/authenticate/:authToken', ExternalAuth.authenticate);
 routes.get('/password/:pass', ExternalAuth.generatePassword);
 routes.get('/undoAuth/:authToken', ExternalAuth.undoAuth);

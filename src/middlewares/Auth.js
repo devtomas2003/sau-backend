@@ -1,4 +1,6 @@
 const jwt = require("jsonwebtoken");
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 
 module.exports = (req, res, next) => {
     const authHeader = req.headers.authorization;
@@ -17,8 +19,22 @@ module.exports = (req, res, next) => {
         if(err){
             res.status(200).json({"status": "error", "error": 'token-bad-sign'});
         }else{
-            req.utenteID = decoded.id;
-            next();
+            const authSession = decoded.authSession;
+            const applicationData = await prisma.authorization.findUnique({
+                where: {
+                    authorizationID: authSession
+                }
+            });
+            if(applicationData){
+                if(applicationData.revoked){
+                    res.status(200).json({"status": "error", "error": 'token-expired'});
+                }else{
+                    req.utenteID = decoded.id;
+                    next();
+                }
+            }else{
+                res.status(200).json({"status": "error", "error": 'token-expired'});
+            }
         }
     });
 };
