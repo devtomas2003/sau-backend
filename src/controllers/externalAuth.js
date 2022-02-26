@@ -3,6 +3,7 @@ const prisma = new PrismaClient();
 const { v4: uuidv4 } = require('uuid');
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const axios = require('axios');
 
 module.exports = {
     async getTokenRedirect(req, res){
@@ -100,7 +101,8 @@ module.exports = {
                     }else{
                         res.status(200).json({
                             "status": "ok",
-                            "appName": authorizationData.Applications.applicationName
+                            "appName": authorizationData.Applications.applicationName,
+                            "backurl": authorizationData.redirectUrl
                         });
                     }
                 }
@@ -164,7 +166,7 @@ module.exports = {
                                         "error": "Redirect Token Error"
                                     });
                                 }else{
-                                    const token = jwt.sign({ authToken }, "SAUPlatAETTR", {
+                                    const token = jwt.sign({ id: utenteData.userID }, "SAUPlatAETTR", {
                                         expiresIn: 3600*applicationData.Applications.tokenDuration
                                     });
                                     await prisma.authorization.update({
@@ -177,9 +179,17 @@ module.exports = {
                                             authorizationID: authToken
                                         }
                                     });
-                                    res.status(200).json({
-                                        "status": "ok",
-                                        token
+                                    axios.post(applicationData.Applications.callbackUrl, {
+                                        sessionToken: authToken,
+                                        authToken: token
+                                    }).then(() => {
+                                        res.status(200).json({
+                                            "status": "ok",
+                                        });
+                                    }).catch(() => {
+                                        res.status(200).json({
+                                            "status": "error-internal",
+                                        });
                                     });
                                 }
                             }
@@ -193,6 +203,20 @@ module.exports = {
                 });
             }
         }
+    },
+    async validateJwt(req, res){
+        res.status(200).json({ "status": "ok" });
+    },
+    async undoAuth(req, res){
+        const authToken = req.params.authToken;
+        await prisma.authorization.delete({
+            where: {
+                authorizationID: authToken
+            }
+        });
+        res.status(200).json({
+            "status": "ok"
+        });
     },
     async generatePassword(req, res){
         bcrypt.hash(req.params.pass, 12, function(err, hash) {
