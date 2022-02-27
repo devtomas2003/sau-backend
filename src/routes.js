@@ -20,5 +20,6 @@ routes.get('/getSecurityInfo', Utentes.getSecurityInfo);
 routes.get('/getOtpQrCode', Utentes.getOtpQrCode);
 routes.post('/activateOTP', Utentes.activateOTP);
 routes.post('/desactivateOTP', Utentes.desactivateOTP);
+routes.get('/logout', ExternalAuth.logout);
 
 module.exports = routes;

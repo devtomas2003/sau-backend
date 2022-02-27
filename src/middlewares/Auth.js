@@ -26,7 +26,7 @@ module.exports = (req, res, next) => {
                 }
             });
             if(applicationData){
-                if(applicationData.revoked){
+                if(applicationData.state === 4){
                     res.status(200).json({"status": "error", "error": 'token-expired'});
                 }else{
                     req.utenteID = decoded.id;

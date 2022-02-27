@@ -24,13 +24,34 @@ module.exports = {
                 userID: utenteID
             }
         });
+        const listAuths = await prisma.authorization.findMany({
+            where: {
+                utenteID
+            },
+            select: {
+                redirectTime: true,
+                startTime: true,
+                endTime: true,
+                state: true,
+                Applications: {
+                    select: {
+                        applicationName: true
+                    }
+                }
+            },
+            orderBy: {
+                startTime: 'desc'
+            }
+        });
         if(utente.otp === null){
             res.status(200).json({
-                "otpEnable": false
+                "otpEnable": false,
+                listAuths
             });
         }else{
             res.status(200).json({
-                "otpEnable": true
+                "otpEnable": true,
+                listAuths
             }); 
         }
     },

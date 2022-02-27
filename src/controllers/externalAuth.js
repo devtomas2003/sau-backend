@@ -161,7 +161,7 @@ module.exports = {
                                 "error": "Redirect Token Error"
                             });
                         }else{
-                            if(applicationData.state === 2 || authorizationData.state === 3){
+                            if(applicationData.state === 2 || applicationData.state === 3 || applicationData.state === 4){
                                 res.status(200).json({
                                     "status": "error-token",
                                     "error": "Token already authenticated"
@@ -228,6 +228,15 @@ module.exports = {
                             }
                         }
                     }else{
+                        await prisma.authorization.update({
+                            data: {
+                                utenteID: utenteData.userID,
+                                state: 5
+                            },
+                            where: {
+                                authorizationID: authToken
+                            }
+                        });
                         res.status(200).json({
                             "status": "error-user",
                             "error": "User not found"
@@ -260,7 +269,7 @@ module.exports = {
                 "error": "Redirect Token Error"
             });
         }else{
-            if(applicationData.state === 2 || authorizationData.state === 3){
+            if(applicationData.state === 2 || applicationData.state === 3 || applicationData.state === 4){
                 res.status(200).json({
                     "status": "error-token",
                     "error": "Token already authenticated"
@@ -314,6 +323,15 @@ module.exports = {
                             });
                         });
                     }else{
+                        await prisma.authorization.update({
+                            data: {
+                                utenteID: utenteData.userID,
+                                state: 5
+                            },
+                            where: {
+                                authorizationID: authToken
+                            }
+                        });
                         res.status(200).json({
                             "status": "error-otp",
                             "error": "Invalid OTP"
@@ -329,9 +347,12 @@ module.exports = {
     },
     async undoAuth(req, res){
         const authToken = req.params.authToken;
-        await prisma.authorization.delete({
+        await prisma.authorization.update({
             where: {
                 authorizationID: authToken
+            },
+            data: {
+                state: 5
             }
         });
         res.status(200).json({
@@ -341,6 +362,25 @@ module.exports = {
     async generatePassword(req, res){
         bcrypt.hash(req.params.pass, 12, function(err, hash) {
             res.send(hash);
+        });
+    },
+    async logout(req, res){
+        const utenteID = req.utenteID;
+        const authLine = await prisma.authorization.findFirst({
+            where: {
+                utenteID
+            }
+        });
+        await prisma.authorization.update({
+            where: {
+                authorizationID: authLine.authorizationID
+            },
+            data: {
+                state: 4
+            }
+        });
+        res.status(200).json({
+            "status": "ok"
         });
     }
 };

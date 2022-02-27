@@ -34,7 +34,6 @@ model Authorization {
   navigatorFingerprint String
   utenteID String?
   state Int @default(0)
-  revoked Boolean @default(false)
 }
 
 
