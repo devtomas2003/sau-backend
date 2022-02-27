@@ -45,6 +45,7 @@ model Utentes {
   dataNascimento DateTime
   sexo Int
   password String
+  otp String?
   nif Int
   email String
   nacionalidade String
@@ -54,4 +55,9 @@ model Utentes {
   codPostal String
   localidade String
   freguesia Int
+}
+
+model OTPTemp {
+  utenteID String @unique
+  otp String
 }
