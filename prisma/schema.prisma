@@ -32,7 +32,8 @@ model Authorization {
   startTime DateTime?
   endTime DateTime?
   navigatorFingerprint String
-  tokenAuthenticated Boolean @default(false)
+  utenteID String?
+  state Int @default(0)
   revoked Boolean @default(false)
 }
 

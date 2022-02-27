@@ -4,6 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const axios = require('axios');
+const speakeasy = require('speakeasy');
 
 module.exports = {
     async getTokenRedirect(req, res){
@@ -81,7 +82,7 @@ module.exports = {
                     "error": "Invalid redirect token"
                 });
             }else{
-                if(authorizationData.tokenAuthenticated){
+                if(authorizationData.state === 2 || authorizationData.state === 3){
                     res.status(200).json({
                         "status": "error",
                         "error": "Token already authenticated"
@@ -160,7 +161,7 @@ module.exports = {
                                 "error": "Redirect Token Error"
                             });
                         }else{
-                            if(applicationData.tokenAuthenticated){
+                            if(applicationData.state === 2 || authorizationData.state === 3){
                                 res.status(200).json({
                                     "status": "error-token",
                                     "error": "Token already authenticated"
@@ -180,32 +181,49 @@ module.exports = {
                                         "error": "Redirect Token Error"
                                     });
                                 }else{
-                                    const token = jwt.sign({ id: utenteData.userID, authSession: authToken }, "SAUPlatAETTR", {
-                                        expiresIn: 3600*applicationData.Applications.tokenDuration
-                                    });
-                                    await prisma.authorization.update({
-                                        data: {
-                                            startTime: new Date(),
-                                            endTime: new Date(new Date().setHours(new Date().getHours() + applicationData.Applications.tokenDuration)),
-                                            tokenAuthenticated: true
-                                        },
-                                        where: {
-                                            authorizationID: authToken
-                                        }
-                                    });
-                                    axios.post(applicationData.Applications.callbackUrl, {
-                                        sessionToken: authToken,
-                                        authToken: token,
-                                        fignPrt: applicationData.navigatorFingerprint
-                                    }).then(() => {
+                                    if(utenteData.otp){
+                                        await prisma.authorization.update({
+                                            data: {
+                                                utenteID: utenteData.userID,
+                                                state: 1
+                                            },
+                                            where: {
+                                                authorizationID: authToken
+                                            }
+                                        });
                                         res.status(200).json({
                                             "status": "ok",
+                                            "haveOTP": true
                                         });
-                                    }).catch(() => {
-                                        res.status(200).json({
-                                            "status": "error-internal",
+                                    }else{
+                                        const token = jwt.sign({ id: utenteData.userID, authSession: authToken }, "SAUPlatAETTR", {
+                                            expiresIn: 3600*applicationData.Applications.tokenDuration
                                         });
-                                    });
+                                        await prisma.authorization.update({
+                                            data: {
+                                                startTime: new Date(),
+                                                endTime: new Date(new Date().setHours(new Date().getHours() + applicationData.Applications.tokenDuration)),
+                                                utenteID: utenteData.userID,
+                                                state: 2
+                                            },
+                                            where: {
+                                                authorizationID: authToken
+                                            }
+                                        });
+                                        axios.post(applicationData.Applications.callbackUrl, {
+                                            sessionToken: authToken,
+                                            authToken: token,
+                                            fignPrt: applicationData.navigatorFingerprint
+                                        }).then(() => {
+                                            res.status(200).json({
+                                                "status": "ok",
+                                            });
+                                        }).catch(() => {
+                                            res.status(200).json({
+                                                "status": "error-internal",
+                                            });
+                                        });
+                                    }
                                 }
                             }
                         }
@@ -218,6 +236,93 @@ module.exports = {
                 });
             }
         }
+    },
+    async validateOTP(req, res){
+        const otp = req.body.otp;
+        const authToken = req.params.authToken;
+        if(!authToken){
+            res.status(200).json({
+                "status": "error-token",
+                "error": "Redirect Token Error"
+            });
+        }else{
+        const applicationData = await prisma.authorization.findUnique({
+            where: {
+                authorizationID: authToken
+            },
+            include: {
+                Applications: true
+            }
+        });
+        if(!applicationData){
+            res.status(200).json({
+                "status": "error-token",
+                "error": "Redirect Token Error"
+            });
+        }else{
+            if(applicationData.state === 2 || authorizationData.state === 3){
+                res.status(200).json({
+                    "status": "error-token",
+                    "error": "Token already authenticated"
+                });
+            }else{
+                const now = new Date();
+                const redirectMoment = new Date(applicationData.redirectTime);
+                const difference = (now - redirectMoment) / 1000;
+                if(difference > 60){
+                    await prisma.authorization.delete({
+                        where: {
+                            authorizationID: authToken
+                        }
+                    });
+                    res.status(200).json({
+                        "status": "error-token",
+                        "error": "Redirect Token Error"
+                    });
+                }else{
+                    const utente = await prisma.utentes.findUnique({
+                        where: {
+                            userID: applicationData.utenteID
+                        }
+                    });
+                    const verifica = speakeasy.totp.verify({ secret: utente.otp, encoding: 'base32', token: otp });
+                    if(verifica){
+                        const token = jwt.sign({ id: utente.userID, authSession: authToken }, "SAUPlatAETTR", {
+                            expiresIn: 3600*applicationData.Applications.tokenDuration
+                        });
+                        await prisma.authorization.update({
+                            data: {
+                                startTime: new Date(),
+                                endTime: new Date(new Date().setHours(new Date().getHours() + applicationData.Applications.tokenDuration)),
+                                state: 3
+                            },
+                            where: {
+                                authorizationID: authToken
+                            }
+                        });
+                        axios.post(applicationData.Applications.callbackUrl, {
+                            sessionToken: authToken,
+                            authToken: token,
+                            fignPrt: applicationData.navigatorFingerprint
+                        }).then(() => {
+                            res.status(200).json({
+                                "status": "ok",
+                            });
+                        }).catch(() => {
+                            res.status(200).json({
+                                "status": "error-internal",
+                            });
+                        });
+                    }else{
+                        res.status(200).json({
+                            "status": "error-otp",
+                            "error": "Invalid OTP"
+                        });
+                    }
+                }
+            }
+        }
+            }
     },
     async validateJwt(req, res){
         res.status(200).json({ "status": "ok" });

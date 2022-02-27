@@ -10,6 +10,7 @@ routes.get('/getLang/:lang', Langs.getTranslation);
 routes.post('/getRedirectToken', ExternalAuth.getTokenRedirect);
 routes.post('/getRedirectData', ExternalAuth.getRedirectData);
 routes.post('/authenticate/:authToken', ExternalAuth.authenticate);
+routes.post('/validateOTP/:authToken', ExternalAuth.validateOTP);
 routes.get('/password/:pass', ExternalAuth.generatePassword);
 routes.get('/undoAuth/:authToken', ExternalAuth.undoAuth);
 routes.use(Auth);
