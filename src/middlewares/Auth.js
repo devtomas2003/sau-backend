@@ -16,10 +16,23 @@ module.exports = (req, res, next) => {
         res.status(200).json({ "status": "error", "error": "token-bad-format" });
     }
     jwt.verify(token, "SAUPlatAETTR", async (err, decoded) => {
+        const authSession = decoded.authSession;
         if(err){
-            res.status(200).json({"status": "error", "error": 'token-bad-sign'});
+            if(err.name === "TokenExpiredError"){
+                await prisma.authorization.update({
+                    where: {
+                        authorizationID: authSession
+                    },
+                    data: {
+                        state: 4,
+                        endTime: new Date()
+                    }
+                });
+                res.status(200).json({"status": "error", "error": 'token-expired'});
+            }else{
+                res.status(200).json({"status": "error", "error": 'token-bad-sign'});             
+            }
         }else{
-            const authSession = decoded.authSession;
             const applicationData = await prisma.authorization.findUnique({
                 where: {
                     authorizationID: authSession

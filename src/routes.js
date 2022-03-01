@@ -15,11 +15,12 @@ routes.get('/password/:pass', ExternalAuth.generatePassword);
 routes.get('/undoAuth/:authToken', ExternalAuth.undoAuth);
 routes.use(Auth);
 routes.get('/validateJwt', ExternalAuth.validateJwt);
-routes.get('/basicInfo', Utentes.getBasicInfo);
+routes.get('/getBasicInfo', Utentes.getBasicInfo);
 routes.get('/getSecurityInfo', Utentes.getSecurityInfo);
 routes.get('/getOtpQrCode', Utentes.getOtpQrCode);
 routes.post('/activateOTP', Utentes.activateOTP);
 routes.post('/desactivateOTP', Utentes.desactivateOTP);
 routes.get('/logout', ExternalAuth.logout);
+routes.get('/revokeAuth/:authSession', Utentes.revokeAuth);
 
 module.exports = routes;

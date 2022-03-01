@@ -1,6 +1,7 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const speakeasy = require('speakeasy');
+const { appName } = require('../configs');
 
 module.exports = {
     async getBasicInfo(req, res){
@@ -27,12 +28,33 @@ module.exports = {
         const listAuths = await prisma.authorization.findMany({
             where: {
                 utenteID
+            }
+        });
+        for(var i = 0; i <= listAuths.length-1; i++){
+            const now = new Date();
+            const redirectMoment = new Date(listAuths[i].endTime);
+            const difference = (now - redirectMoment) / 1000;
+            if(difference >= 0){
+                await prisma.authorization.update({
+                    where: {
+                        authorizationID: listAuths[i].authorizationID
+                    },
+                    data: {
+                        state: 4
+                    }
+                });
+            }
+        }
+        const newListAuths = await prisma.authorization.findMany({
+            where: {
+                utenteID
             },
             select: {
                 redirectTime: true,
                 startTime: true,
                 endTime: true,
                 state: true,
+                authorizationID: true,
                 Applications: {
                     select: {
                         applicationName: true
@@ -46,12 +68,12 @@ module.exports = {
         if(utente.otp === null){
             res.status(200).json({
                 "otpEnable": false,
-                listAuths
+                listAuths: newListAuths
             });
         }else{
             res.status(200).json({
                 "otpEnable": true,
-                listAuths
+                listAuths: newListAuths
             }); 
         }
     },
@@ -81,7 +103,7 @@ module.exports = {
                 otp: secret.base32
             }
         });
-        const otpName = "MyAETTR (" + utente.userProc + ")";
+        const otpName = appName + " (" + utente.userProc + ")";
         const qrcodeUrl = "otpauth://totp/" + otpName + "?secret=" + secret.base32;
         res.status(200).json({
             "status": "ok",
@@ -165,5 +187,20 @@ module.exports = {
                 "error": "OTP Error"
             });
         }
+    },
+    async revokeAuth(req, res){
+        const authSession = req.params.authSession;
+        await prisma.authorization.update({
+            where: {
+                authorizationID: authSession
+            },
+            data: {
+                state: 4,
+                endTime: new Date()
+            }
+        });
+        res.status(200).json({
+            "status": "ok"
+        });
     }
 };
