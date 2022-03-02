@@ -325,7 +325,7 @@ module.exports = {
                     }else{
                         await prisma.authorization.update({
                             data: {
-                                utenteID: utenteData.userID,
+                                utenteID: utente.userID,
                                 state: 5
                             },
                             where: {
